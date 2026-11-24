@@ -1,0 +1,53 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Render: dot -Tpng -Gdpi=144 docs/architecture.dot -o docs/architecture.png
+digraph Architecture {
+  graph [bgcolor="#ffffff", fontname="Helvetica", fontsize=12, pad=0.4, nodesep=0.45, ranksep=0.65, rankdir=TB];
+  node  [shape=box, style="rounded,filled", color="#c2c6d5", fillcolor="#ffffff", fontcolor="#191b22", fontname="Helvetica", fontsize=11, margin="0.18,0.10"];
+  edge  [color="#727785", fontcolor="#424753", fontname="Helvetica", fontsize=9, penwidth=1.3];
+
+  subgraph cluster_browser {
+    label="Browser: Lit UI + src/lib/live/ headless TypeScript kit"; style="rounded,filled"; color="#c2c6d5"; fillcolor="#f2f3fd"; fontcolor="#424753";
+    Setup    [label="<avatar-setup> / <live-setup>\npreset, upload, webcam or prompt avatar;\nvoice, tools, grounding context"];
+    Settings [label="<app-settings>\nmodels, VAD, theme\n(localStorage)"];
+    Views    [label="<avatar-session> / <live-session>\nLit ReactiveControllers + 1 FPS vision"];
+    LiveKit  [label="src/lib/live/ (framework-agnostic)\nLiveSocketClient, TranscriptAssembler,\nPcmMic (16 kHz AudioWorklet), PcmPlayer (24 kHz),\nFmp4Player (MediaSource), ChimeSynth, WebmcpToolHost", color="#4285f4", penwidth=2];
+    Settings -> Setup [style=dashed, label="defaults"];
+    Setup -> Views [label="connect"];
+    Views -> LiveKit [label="delegates media & wire"];
+  }
+
+  subgraph cluster_server {
+    label="Go server: HTTP routes + livebridge switchboard package"; style="rounded,filled"; color="#c2c6d5"; fillcolor="#f2f3fd"; fontcolor="#424753";
+    Guard  [label="livebridge.OriginPolicy & NewHTTPServer\nsize limits (16 MiB / 8 MiB), input validation"];
+    Bridge [label="livebridge.Bridge (/ws avatar, /ws/live audio)\nSafeConn, ClientPool, SniffMP4, TerminateGate,\nToolRunner (server + page relay), AlertBusOf[T],\nproactive greeting, 10-minute cap, single Shutdown()", color="#4285f4", penwidth=2];
+    Images [label="/api/generate-avatar (9:16, 2K)\n/api/describe-image"];
+    Config [label="/api/config\nmodel and location allowlists"];
+    Guard -> Bridge;
+    Guard -> Images;
+  }
+
+  subgraph cluster_cloud {
+    label="Google Cloud"; style="rounded,filled"; color="#c2c6d5"; fillcolor="#f2f3fd"; fontcolor="#424753";
+    LiveAPI  [label="Gemini Live API\n(gemini-3.8-live)"];
+    ImageAPI [label="Gemini image models\n(gemini-nano-banana-2.1)"];
+  }
+
+  LiveKit -> Guard [label="WebSocket: JSON + base64 media up,\nbinary fMP4 / PCM down"];
+  Setup -> Guard [label="HTTPS"];
+  Settings -> Config [label="HTTPS"];
+  Bridge -> LiveAPI [label="Bidi WebSocket\n(ADC credentials, Google Gen AI SDK)"];
+  Images -> ImageAPI [label="GenerateContent"];
+}

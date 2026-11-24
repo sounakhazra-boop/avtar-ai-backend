@@ -1,0 +1,16 @@
+services:
+  gemini-live-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gemini-live-backend
+    ports:
+      - "4028:8080"
+    env_file:
+      - .env
+    environment:
+      - PORT=8080
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/gcloudJson/avtar-ai.json
+    volumes:
+      - ./gcloudJson:/app/gcloudJson:ro
+    restart: unless-stopped

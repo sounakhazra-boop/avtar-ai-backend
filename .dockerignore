@@ -14,9 +14,12 @@ node_modules/
 frontend/node_modules/
 vendor/
 
-# Environment variables
+# Secrets
 .env
 .env.*
+gcloudJson/
+*.json
+
 
 # Git and OS
 .git/
